@@ -1,0 +1,7 @@
+{
+  "repositories": [
+    "/path/to/your/first/repo",
+    "/path/to/your/second/repo",
+    "/home/user/projects/my-project"
+  ]
+}

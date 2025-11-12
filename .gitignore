@@ -1,0 +1,8 @@
+# Repository configuration (contains local paths)
+repositories.json
+
+# SQLite database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

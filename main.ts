@@ -51,38 +51,125 @@ async function etlGitRepo(repoPath: string): Promise<void> {
   console.log("\n✅ ETL completed successfully!\n");
 }
 
-if (import.meta.main) {
-  const repoPath = Deno.args[0];
-
-  if (!repoPath) {
-    console.error("❌ Error: Please provide a repository path");
-    console.log("\nUsage: deno run --allow-all main.ts /path/to/repo");
-    console.log(
-      "Example: deno run --allow-all main.ts /home/bridger/git/sparkplug",
-    );
-    Deno.exit(1);
-  }
-
+async function loadRepositoriesConfig(
+  configPath: string,
+): Promise<string[]> {
   try {
-    const stat = await Deno.stat(repoPath);
-    if (!stat.isDirectory) {
-      console.error(`❌ Error: ${repoPath} is not a directory`);
+    const content = await Deno.readTextFile(configPath);
+    const config = JSON.parse(content);
+
+    if (!config.repositories || !Array.isArray(config.repositories)) {
+      throw new Error(
+        "Invalid config format: 'repositories' array not found",
+      );
+    }
+
+    return config.repositories;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      throw new Error(`Config file not found: ${configPath}`);
+    }
+    throw error;
+  }
+}
+
+if (import.meta.main) {
+  const firstArg = Deno.args[0];
+
+  // Check if using config file mode
+  if (firstArg === "--config" || firstArg === "-c") {
+    const configPath = Deno.args[1] || "./repositories.json";
+
+    console.log(`📋 Loading repositories from: ${configPath}\n`);
+
+    try {
+      const repositories = await loadRepositoriesConfig(configPath);
+      console.log(`Found ${repositories.length} repositories to process\n`);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const repoPath of repositories) {
+        try {
+          const stat = await Deno.stat(repoPath);
+          if (!stat.isDirectory) {
+            console.error(`⚠️  Skipping ${repoPath}: not a directory\n`);
+            failCount++;
+            continue;
+          }
+
+          await etlGitRepo(repoPath);
+          successCount++;
+        } catch (error) {
+          console.error(
+            `❌ Failed to process ${repoPath}:`,
+            error instanceof Error ? error.message : error,
+            "\n",
+          );
+          failCount++;
+        }
+      }
+
+      console.log("\n" + "=".repeat(60));
+      console.log(
+        `✅ Processed ${successCount}/${repositories.length} repositories successfully`,
+      );
+      if (failCount > 0) {
+        console.log(`⚠️  ${failCount} repositories failed`);
+      }
+      console.log("=".repeat(60) + "\n");
+
+      db.close();
+    } catch (error) {
+      console.error(
+        "❌ Error loading config:",
+        error instanceof Error ? error.message : error,
+      );
+      db.close();
       Deno.exit(1);
     }
-  } catch {
-    console.error(`❌ Error: Path does not exist: ${repoPath}`);
-    Deno.exit(1);
-  }
+  } else {
+    // Single repository mode (backward compatible)
+    const repoPath = firstArg;
 
-  try {
-    await etlGitRepo(repoPath);
-    db.close();
-  } catch (error) {
-    console.error(
-      "\n❌ ETL failed:",
-      error instanceof Error ? error.message : error,
-    );
-    db.close();
-    Deno.exit(1);
+    if (!repoPath) {
+      console.error(
+        "❌ Error: Please provide a repository path or config file",
+      );
+      console.log("\nUsage:");
+      console.log(
+        "  Single repo:   deno run --allow-all main.ts /path/to/repo",
+      );
+      console.log(
+        "  Multiple repos: deno run --allow-all main.ts --config repositories.json",
+      );
+      console.log(
+        "\nExample: deno run --allow-all main.ts /home/bridger/git/sparkplug",
+      );
+      Deno.exit(1);
+    }
+
+    try {
+      const stat = await Deno.stat(repoPath);
+      if (!stat.isDirectory) {
+        console.error(`❌ Error: ${repoPath} is not a directory`);
+        Deno.exit(1);
+      }
+    } catch {
+      console.error(`❌ Error: Path does not exist: ${repoPath}`);
+      Deno.exit(1);
+    }
+
+    try {
+      await etlGitRepo(repoPath);
+      db.close();
+    } catch (error) {
+      console.error(
+        "\n❌ ETL failed:",
+        error instanceof Error ? error.message : error,
+      );
+      db.close();
+      Deno.exit(1);
+    }
   }
 }

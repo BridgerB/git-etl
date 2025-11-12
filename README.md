@@ -4,10 +4,27 @@ Extract git repository data into a SQLite database for analysis in Metabase.
 
 ## Usage
 
+### Single Repository
+
 ```bash
-# Run ETL on a repository
+# Run ETL on a single repository
 deno run --allow-all main.ts /path/to/repo
 ```
+
+### Multiple Repositories
+
+```bash
+# Process multiple repositories from a config file
+deno run --allow-all main.ts --config repositories.json
+```
+
+**Setup:**
+
+1. Copy `repositories.example.json` to `repositories.json`
+2. Edit `repositories.json` with your repository paths
+3. Run with `--config` flag
+
+The `repositories.json` file is git-ignored to keep your local paths private.
 
 ## Example Queries
 
