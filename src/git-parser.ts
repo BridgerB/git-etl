@@ -77,6 +77,28 @@ export async function getRepoInfo(repoPath: string): Promise<GitRepoInfo> {
 }
 
 /**
+ * Parses Git rename syntax from file paths.
+ * Git shows renames as: {old_path => new_path}
+ *
+ * Examples:
+ *   "path/{old.js => new.js}" -> "path/new.js"
+ *   "{ => single}/file.ts" -> "single/file.ts"
+ *   "regular/path.ts" -> "regular/path.ts"
+ *
+ * @param filePath - Raw file path from git log --numstat
+ * @returns Parsed file path with rename syntax resolved to the new path
+ */
+function parseGitRenamePath(filePath: string): string {
+  // Match Git rename pattern: {old => new}
+  const renamePattern = /\{([^}]*?)\s*=>\s*([^}]*?)\}/g;
+
+  // Replace all rename patterns with the new path
+  return filePath.replace(renamePattern, (_match, _oldPath, newPath) => {
+    return newPath;
+  });
+}
+
+/**
  * Parses the complete Git commit history for a branch.
  * Extracts commit metadata, file statistics, and individual file changes.
  *
@@ -143,7 +165,9 @@ export async function parseGitLog(
         if (parts.length >= 3) {
           const add = parts[0] === "-" ? 0 : parseInt(parts[0]) || 0;
           const del = parts[1] === "-" ? 0 : parseInt(parts[1]) || 0;
-          const filePath = parts.slice(2).join(" ");
+          const rawFilePath = parts.slice(2).join(" ");
+          // Parse Git rename syntax: {old => new} -> new
+          const filePath = parseGitRenamePath(rawFilePath);
 
           additions += add;
           deletions += del;
@@ -224,6 +248,7 @@ export async function getRepoLanguage(
       kt: "Kotlin",
       scala: "Scala",
       sh: "Shell",
+      nix: "Nix",
     };
 
     let maxCount = 0;

@@ -1,0 +1,7 @@
+{
+  "tasks": {
+    "clean": "rm -f /var/tmp/git-analytics.db /var/tmp/git-analytics.db-wal /var/tmp/git-analytics.db-shm",
+    "etl": "deno run --allow-all main.ts --config repositories.json",
+    "fresh": "deno task clean && deno task etl"
+  }
+}
