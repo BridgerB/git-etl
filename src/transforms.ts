@@ -1,36 +1,41 @@
-import type { GitCommit } from "./git-parser.ts";
-import type { DailyStat, SummaryStats } from "./types.ts";
+import type { Author, GitCommit } from "./git-parser.ts";
+import type { SummaryStats } from "./types.ts";
 
-export function aggregateDailyStats(
-  commits: GitCommit[],
-  repoName: string,
-): DailyStat[] {
-  const dailyStatsMap = new Map<string, DailyStat>();
+/**
+ * Aggregates commit data by author.
+ * Calculates first/last commit dates and total commit count per author.
+ *
+ * @param commits - Array of parsed commits
+ * @returns Array of aggregated author statistics
+ */
+export function aggregateAuthors(commits: GitCommit[]): Author[] {
+  const authorMap = new Map<string, Author>();
 
   for (const commit of commits) {
-    const date = commit.committedAt.toISOString().split("T")[0];
-    const key = `${date}|${repoName}|${commit.authorEmail}`;
+    const existing = authorMap.get(commit.authorEmail);
 
-    const existing = dailyStatsMap.get(key);
-    if (existing) {
-      existing.commitsCount++;
-      existing.additions += commit.additions;
-      existing.deletions += commit.deletions;
-      existing.filesChanged += commit.filesChanged;
-    } else {
-      dailyStatsMap.set(key, {
-        date,
-        repoName,
-        authorEmail: commit.authorEmail,
-        commitsCount: 1,
-        additions: commit.additions,
-        deletions: commit.deletions,
-        filesChanged: commit.filesChanged,
+    if (!existing) {
+      authorMap.set(commit.authorEmail, {
+        email: commit.authorEmail,
+        name: commit.authorName,
+        firstCommitAt: commit.committedAt,
+        lastCommitAt: commit.committedAt,
+        totalCommits: 1,
       });
+    } else {
+      existing.totalCommits++;
+      existing.name = commit.authorName; // Keep latest name
+
+      if (commit.committedAt < existing.firstCommitAt) {
+        existing.firstCommitAt = commit.committedAt;
+      }
+      if (commit.committedAt > existing.lastCommitAt) {
+        existing.lastCommitAt = commit.committedAt;
+      }
     }
   }
 
-  return Array.from(dailyStatsMap.values());
+  return Array.from(authorMap.values());
 }
 
 export function calculateSummaryStats(commits: GitCommit[]): SummaryStats {

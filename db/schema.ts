@@ -27,29 +27,6 @@ export function initializeSchema(db: Database): void {
   `);
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS daily_stats (
-      stat_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date DATE NOT NULL,
-      repo_name TEXT NOT NULL,
-      author_email TEXT NOT NULL,
-      commits_count INTEGER NOT NULL DEFAULT 0,
-      additions INTEGER NOT NULL DEFAULT 0,
-      deletions INTEGER NOT NULL DEFAULT 0,
-      files_changed INTEGER NOT NULL DEFAULT 0,
-      prs_opened INTEGER NOT NULL DEFAULT 0,
-      prs_merged INTEGER NOT NULL DEFAULT 0,
-      issues_closed INTEGER NOT NULL DEFAULT 0,
-      UNIQUE(date, repo_name, author_email)
-    )
-  `);
-
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_daily_stats_date ON daily_stats(date);
-    CREATE INDEX IF NOT EXISTS idx_daily_stats_repo ON daily_stats(repo_name);
-    CREATE INDEX IF NOT EXISTS idx_daily_stats_author ON daily_stats(author_email);
-  `);
-
-  db.exec(`
     CREATE TABLE IF NOT EXISTS pull_requests (
       pr_id INTEGER PRIMARY KEY AUTOINCREMENT,
       repo_name TEXT NOT NULL,
@@ -87,5 +64,58 @@ export function initializeSchema(db: Database): void {
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_repos_name ON repos(name);
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS authors (
+      author_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      first_commit_at TIMESTAMP,
+      last_commit_at TIMESTAMP,
+      total_commits INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_authors_email ON authors(email);
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS file_changes (
+      change_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      repo_name TEXT NOT NULL,
+      sha TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      additions INTEGER NOT NULL DEFAULT 0,
+      deletions INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(repo_name, sha, file_path)
+    )
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_file_changes_repo_file ON file_changes(repo_name, file_path);
+    CREATE INDEX IF NOT EXISTS idx_file_changes_sha ON file_changes(sha);
+    CREATE INDEX IF NOT EXISTS idx_file_changes_repo ON file_changes(repo_name);
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tags (
+      tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      repo_name TEXT NOT NULL,
+      tag_name TEXT NOT NULL,
+      sha TEXT NOT NULL,
+      tagger_name TEXT,
+      tagger_email TEXT,
+      tag_date TIMESTAMP,
+      message TEXT,
+      is_annotated BOOLEAN NOT NULL DEFAULT 0,
+      UNIQUE(repo_name, tag_name)
+    )
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_tags_repo ON tags(repo_name);
+    CREATE INDEX IF NOT EXISTS idx_tags_sha ON tags(sha);
   `);
 }

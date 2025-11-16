@@ -1,7 +1,14 @@
 {
   "repositories": [
-    "/path/to/your/first/repo",
-    "/path/to/your/second/repo",
-    "/home/user/projects/my-project"
+    "/path/to/specific/repo1",
+    "/path/to/specific/repo2"
+  ],
+  "paths": [
+    "/home/user/projects",
+    "/home/user/work"
+  ],
+  "ignore": [
+    "/home/user/projects/skip-this-repo",
+    "/home/user/work/archived-project"
   ]
 }
